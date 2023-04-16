@@ -1,0 +1,255 @@
+\documentclass[12pt]{report}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage[pdftex,
+	pdfauthor={Delmas Pierre},
+	pdftitle={Specifications logiciel de gestion de mots de passe},
+	pdfsubject={Cryptographie et Stéganographie},
+	pdfkeywords={gestion, mots de passe, specifications},
+	pdfproducer={LaTeX via TexStudio},
+	pdfcreator={pdflatex}]{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage[greek,english,french]{babel}
+\usepackage{multicol}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage[toc,style=alttree,nonumberlist,section=chapter]{glossaries}
+\usepackage{enumitem}
+\floatname{algorithm}{Procedure}
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+\renewenvironment{abstract}[1]
+{\bigskip\selectlanguage{#1}%
+	\begin{center}\bfseries\abstractname\end{center}}
+{\par\bigskip}
+\providecommand{\beginpar}{\mbox{\hspace*{0.6cm}}}
+\providecommand{\keywords}[1]{\textbf{\textit{Index terms ---}} #1}
+\DeclareMathOperator*{\argmin}{argmin}
+\date{\today}
+\title{Spécifications du logiciel crypt, logiciel de gestion de mots de passe}
+\author{Delmas Pierre}
+
+% Graphics path
+\graphicspath{{./Images/}{./figures/}}
+
+%Make glossary and load it from a file named glossary.tex
+\loadglsentries{glossaire}
+\makeglossaries
+\glsaddall
+
+\begin{document}
+	\maketitle
+	\tableofcontents
+	\printglossary[type=main,style=long,nonumberlist]
+	\chapter{Introduction}
+	Le logiciel crypt est un logiciel ayant pour but de faire de la gestion de mots de passe. Ce logiciel doit donc chiffrer les mots de passe et les sauvegarder de manière sécurisée. Ce logiciel se présentera donc sous la forme de 4 applications séparée : 
+	\begin{itemize}
+		\item Une application serveur, développé en Javascript
+		\item Une application bureau, développé en C++
+		\item Une application web, développé en PHP
+		\item Une application Android, développé en Java/XML
+	\end{itemize}
+	Chacune de ses applications sera expliquée dans un chapitre séparé dans ce document.
+	\chapter{Application Serveur}
+	\section{Introduction}
+	Cette application a pour but de gérer les accès à la base de données et de chiffrer les mots de passe. Cette application est donc constituée de deux parties, un serveur de base de données MongoDB et un serveur web Node.js.
+	\newline
+	Tous les routes de ce serveur prennent le MIME/Type : "application/json"
+	\section{Choix des technologies}
+	Les technologies suivantes ont été choisies :
+	\begin{itemize}
+		\item Base de données : MongoDB
+		\item Serveur Web : Node.js
+	\end{itemize}
+	Ces technologies ont été choisies pour leur simplicité de mise en œuvre et la relative maîtrise de ces outils par le développeur principal.
+	\newline
+	Il est a noté que le serveur Node.js ne fait pas d'affichage mais renvoi uniquement des \gls{json} formaté avec les données nécessaires.
+	\section{Routes disponibles}
+	Les différentes routes envisagées sont :
+	\subsection{/}
+	\subsubsection{GET : /}
+	La route \textbf{/} permet de tester que le serveur fonctionne. Elle renvoi toujours un code d'erreur \textit{418 : I'm a teapot}
+	\subsection{/user}
+	\subsubsection{GET : /}
+	Cette route renvoie un code d'erreur \textit{403 : Forbidden}
+	\subsubsection{POST : /}
+	Cette route permet de créer un nouvel utilisateur. Elle prend en paramètre un \gls{json} dans le corps (body) de la requête. Les paramètres sont : 
+	\begin{itemize}
+		\item login : Le login de l'utilisateur (Requis)
+		\item password : Le nouveau mot de passe de l'utilisateur. Il doit être en clair, c'est le serveur qui s'occupe de l'encryption de ce mot de passe (Requis)
+		\item mail : Le mail de l'utilisateur (Requis)
+		\item last\_name : Le nom de famille de l'utilisateur (Optionnel)
+		\item first\_name : Le prénom de l'utilisateur (Optionnel)
+		\item phone\_number : Le numéro de téléphone de l'utilisateur au format international (Optionnel)
+	\end{itemize}
+	Si la requête est validé la route renvoi un \gls{json} contenant les informations suivantes :
+	\begin{itemize}
+		\item \_id : L'identifiant unique MongoDB pour l'utilisateur
+		\item login : Le login de l'utilisateur
+		\item mail : Le mail de l'utilisateur
+		\item last\_name : Le nom de famille de l'utilisateur (si vide : null)
+		\item first\_name : Le prénom de l'utilisateur (si vide : null)
+		\item phone\_number : Le téléphone de l'utilisateur (si vide : null)
+		\item updatedAt : La date de dernière mise à jour de l'utilisateur au format ISO, temps Zulu
+		\item saved\_passwords : La liste des mots de passe enregistrés pour l'utilisateur (si aucun : tableau vide)
+		\item \_\_v : La version de l'objet (par défaut : 1)
+	\end{itemize}
+	\subsubsection{POST: /login}
+	Cette route permet à un utilisateur de se connecter. Elle prend en paramètre un \gls{json} dans le corps (body) de la requête. Les paramètres sont : 
+	\begin{itemize}
+		\item login : Le login de l'utilisateur
+		\item password : Le password de l'utilisateur, en clair c'est le serveur qui s'occupe de vérifier la validité de ce mot de passe avec la version crypté enregistrée.
+	\end{itemize}
+	Si la connexion réussie la route renvoi un \gls{json} contenant les informations suivantes : 
+	\begin{itemize}
+		\item \_id : L'identifiant unique MongoDB pour l'utilisateur
+		\item login : Le login de l'utilisateur
+		\item mail : Le mail de l'utilisateur
+		\item last\_name : Le nom de famille de l'utilisateur (si vide : null)
+		\item first\_name : Le prénom de l'utilisateur (si vide : null)
+		\item phone\_number : Le téléphone de l'utilisateur (si vide : null)
+		\item updatedAt : La date de dernière mise à jour de l'utilisateur au format ISO, temps Zulu
+		\item saved\_passwords : La liste des mots de passe enregistrés pour l'utilisateur (si aucun : tableau vide)
+		\item \_\_v : La version de l'objet (par défaut : 1)
+		\item token : Le token de session pour l'utilisateur.
+	\end{itemize}
+	\subsection{/password}
+	\subsubsection{POST : /add\_new\_saved\_password}
+	Cette route permet de modifier ou d'ajouter un nouveau mot de passe pour un utilisateur donné.
+	\newline
+	Elle prend en paramètre dans l'en-tête (header) les informations suivantes :
+	\begin{itemize}
+		\item x-auth-token : Le token de session fourni à l'utilisateur au moment de la connexion
+	\end{itemize}
+	Elle prend en paramètre un \gls{json} dans le corps (body) de la requête. Les paramètres sont :
+	\begin{itemize}
+		\item userId : L'id MongoDB de l'utilisateur dont on veut modifier ou ajouter un mot de passe
+		\item id : L'id MongoDB du mot de passe en cas de modification
+		\item name : Le nom usuel du mot de passe (ne doit pas nécessairement être unique)
+		\item password : Le nouveau mot de passe que l'on va sauvegarder pour l'utilisateur, en clair c'est le serveur qui se charge de l'encryption
+		\item userPassword : Le mot de passe de l'utilisateur, en clair c'est le serveur qui se charge de la vérification du mot de passe avec la version encryptée que l'on a
+	\end{itemize}
+	En cas d'échec une erreur \textit{400 : Bad Request} est renvoyée
+	En cas de succès on reçoit un \gls{json} contenant les informations du mot de passe modifié.
+	\subsubsection{POST : /decrypt\_saved\_password}
+	Cette route permet de déchiffrer un mot de passe sauvegardé. Pour l'instant ça ne sert à rien car les mots de passe sauvegardés sont envoyés en clair dans le tableau des mots de passe de l'utilisateur.
+	\newline
+	Elle prend en paramètre dans l'en-tête (header) les informations suivantes :
+	\begin{itemize}
+		\item x-auth-token : Le token de session fourni à l'utilisateur au moment de la connexion
+	\end{itemize}
+	Elle prend en paramètre un \gls{json} dans le corps (body) de la requête. Les paramètres sont :
+	\begin{itemize}
+		\item userId : L'identifiant unique MongoDB pour l'utilisateur
+		\item id : L'identifiant unique MongoDB du mot de passe
+		\item userPassword : Le mot de passe de l'utilisateur, en clair c'est le serveur qui se charge de la vérification du mot de passe avec la version encryptée que l'on a.
+	\end{itemize}
+	En cas d'échec \textit{400 : Bad Request}
+	En cas de succès on renvoit un \gls{json} avec les paramètres suivants :
+	\begin{itemize}
+		\item id : L'id du mot de passe
+		\item name: Le nom du mot de passe 
+		\item spassword: Le mot de passe en clair
+	\end{itemize}
+	\chapter{Application Web : PHP}
+	L'application Web est développé en PHP. Elle doit permettre d'effectuer les actions suivantes :
+	\begin{itemize}
+		\item Créer un nouvel utilisateur
+		\item Permettre à un utilisateur de se connecter
+		\item Afficher la liste des mots de passe par leur nom sous la forme d'une liste (name)
+		\item Afficher les propriétés d'un mot de passe quand on clique dessus
+		\item Créer un nouveau mot de passe
+		\item Modifier un mot de passe existant
+	\end{itemize}
+	D'autres fonctionnalités (déconnexion d'un utilisateur, suppression d'un mot de passe, ...) sont à prévoir mais ne sont pas encore disponible sur le serveur de backend.
+	\newline
+	Les écrans et leurs enchaînements sont laissé à la responsabilité du développeur.
+	\newline
+	Il ne sera pas mis en place une base de données séparé pour cette application, sous-entendu donc que pour chaque information on effectuera une requête sur le serveur de backend et les informations nécessaires seront sauvegardés dans des variables de session.
+	\newline
+	Il faudra prévoir l'internationalisation de l'application.
+	\chapter{Application Bureau : C++}
+	L'application de bureau sera développé en C++. Elle doit permettre d'effectuer les actions suivantes :
+	\begin{itemize}
+		\item Permettre à un utilisateur de se connecter
+		\item Afficher la liste des mots de passe par leur nom sous la forme d'une liste (name)
+		\item Afficher les propriétés d'un mot de passe quand on clique dessus
+		\item Créer un nouveau mot de passe
+		\item Modifier un mot de passe existant
+	\end{itemize}
+	D'autres fonctionnalités (déconnexion d'un utilisateur, suppression d'un mot de passe, ...) sont à prévoir mais ne sont pas encore disponible sur le serveur de backend.
+	\newline
+	Les écrans et leurs enchaînements sont laissé à la responsabilité du développeur.
+	\newline
+	Il sera mis en place une base de données, sous SqLite3, séparée permettant une utilisation hors-réseau (la détection de la présence du réseau est donc nécessaire).
+	\newline
+	Cette base de données se présente comme ceci :
+	\begin{itemize}
+		\item Une table nommée, \textbf{users}, qui contiendra les informations des utilisateurs qui se sont déjà connecté sur l'application en local
+		\begin{itemize}
+			\item id : Un identifiant lié à la base de données local
+			\item login : Le login de l'utilisateur
+			\item password : Le mot de passe de l'utilisateur, celui-ci doit être crypté
+			\item mongo\_id : L'id MongoDB de l'utilisateur pour le serveur de backend
+			\item session\_token : Le token de session de l'utilisateur
+		\end{itemize}
+		\item Une table nommée, \textbf{passwords}, qui contiendra les informations des utilisateurs qui se sont déjà connecté sur l'application en local
+		\begin{itemize}
+			\item id : Un identifiant lié à la base de données local
+			\item name : Le nom du mot de passe
+			\item password : Le mot de passe, chiffré via \glspl{aes}
+			\item mongo\_id : L'identifiant MongoDB du mot de passe
+			\item user\_id : L'id de l'utilisateur dans la base de données local afin de faire des jointures
+		\end{itemize}
+	\end{itemize}
+	Afin de se simplifier la vie on utilisera le framework Qt pour la partie Interface graphique et connexion HTTP/HTTPS.
+	\newline
+	Il est nécessaire de prévoir un fichier de configuration. Pour la gestion de configuration on utilisera aussi le framework Qt. Ce fichier contiendra, au début du moins, juste l'adresse du serveur de backend, ainsi que le port et le type de protocole (http, https, ftp, ...)
+	\newline
+	Le choix de la bibliothèque, ou de recoder l'algorithme \gls{aes}, sera laissé au choix du développeur. La seule contrainte étant de s'assurer que l'algorithme est correctement implémenté et donc qu'il n'y a pas de faille de sécurité.
+	\newline
+	Il faudra prévoir l'internationalisation de l'application.
+	\chapter{Application Android : Java/XML}
+	L'application Android sera développé dans les langages standards d'Android, c'est-à-dire le Java (pour la partie dynamique) et le XML (pour la partie interface). Elle doit permettre d'effectuer les actions suivantes :
+	\begin{itemize}
+		\item Permettre à un utilisateur de se connecter
+		\item Afficher la liste des mots de passe par leur nom sous la forme d'une liste (name)
+		\item Afficher les propriétés d'un mot de passe quand on clique dessus
+		\item Créer un nouveau mot de passe
+		\item Modifier un mot de passe existant
+	\end{itemize}
+	D'autres fonctionnalités (déconnexion d'un utilisateur, suppression d'un mot de passe, ...) sont à prévoir mais ne sont pas encore disponible sur le serveur de backend.
+	\newline
+	Les écrans et leurs enchaînements sont laissé à la responsabilité du développeur.
+	\newline
+	Il sera mis en place une base de données, sous SqLite3, séparée permettant une utilisation hors-réseau (la détection de la présence du réseau est donc nécessaire).
+	\newline
+	Cette base de données se présente comme ceci :
+	\begin{itemize}
+		\item Une table nommée, \textbf{users}, qui contiendra les informations des utilisateurs qui se sont déjà connecté sur l'application en local
+		\begin{itemize}
+			\item id : Un identifiant lié à la base de données local
+			\item login : Le login de l'utilisateur
+			\item password : Le mot de passe de l'utilisateur, celui-ci doit être crypté
+			\item mongo\_id : L'id MongoDB de l'utilisateur pour le serveur de backend
+			\item session\_token : Le token de session de l'utilisateur
+		\end{itemize}
+		\item Une table nommée, \textbf{passwords}, qui contiendra les informations des utilisateurs qui se sont déjà connecté sur l'application en local
+		\begin{itemize}
+			\item id : Un identifiant lié à la base de données local
+			\item name : Le nom du mot de passe
+			\item password : Le mot de passe, chiffré via \glspl{aes}
+			\item mongo\_id : L'identifiant MongoDB du mot de passe
+			\item user\_id : L'id de l'utilisateur dans la base de données local afin de faire des jointures
+		\end{itemize}
+	\end{itemize}
+	On utilisera les outils standards d'Android pour la connexion, l'interface graphique et la gestion des paramètres.
+	\newline Les paramètres gérés sont dans un premier temps, le protocole de connexion, l'adresse de connexion et le port
+	\newline
+	Le choix de la bibliothèque, ou de recoder l'algorithme \gls{aes}, sera laissé au choix du développeur. La seule contrainte étant de s'assurer que l'algorithme est correctement implémenté et donc qu'il n'y a pas de faille de sécurité.
+	\newline
+	Il faudra prévoir l'internationalisation de l'application.
+	\bibliographystyle{plain}
+	\bibliography{biblio}
+\end{document}
